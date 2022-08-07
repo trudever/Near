@@ -1,0 +1,5 @@
+./pytest-adversarial.txt
+./pytest-contracts.txt
+./pytest-sanity.txt
+./pytest-spec.txt
+./pytest-stress.txt

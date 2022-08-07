@@ -1,0 +1,111 @@
+targets = [
+    { triple = "x86_64-unknown-linux-musl" },
+    { triple = "x86_64-pc-windows-msvc" },
+    { triple = "x86_64-apple-darwin" },
+]
+
+[bans]
+multiple-versions = "deny"
+deny = [
+    # See: https://github.com/rust-random/rand/issues/645
+    { name = "rand", version = "<0.6" },
+
+    # See: https://github.com/near/nearcore/pull/3595
+    { name = "keccak-hash", version = "<0.4.1" },
+    { name = "primitive-types", version = "<0.10.1" },
+    { name = "uint", version = "<0.8.2" },
+]
+
+skip = [
+    # See https://github.com/camshaft/bolero/issues/85
+    { name = "crossbeam-channel", version = "=0.4.4" },
+    { name = "crossbeam-utils", version = "=0.7.2" },
+    { name = "strsim", version = "=0.8.0" },
+
+    { name = "clap", version = "=2.34.0" },
+    # criterion uses clap=2.34.0 which relies on an older textwrap
+    { name = "textwrap", version = "=0.11.0" },
+
+    # near-epoch-manager fixed the rand version to ensure protocol stability
+    { name = "rand", version = "=0.6.5" },
+    # rand 0.6.5 uses two versions of rand_core due to weird dependencies mismatch with rand_chacha
+    { name = "rand_core", version = "=0.3.1" },
+    { name = "rand_chacha", version = "=0.1.1" },
+    { name = "autocfg", version = "=0.1.8" },
+    # wasmer 0.17 and wasmtime 0.17 use conflicting versions of those
+    { name = "wasmparser", version = "=0.51.4" },
+    { name = "rand_core", version = "=0.4.2" },
+    # wasmer 0.17 and wasmtime 0.17 uses older versions of some crates
+    { name = "generic-array", version = "=0.12.4" },
+
+    # `sha2` uses it
+    { name = "cfg-if", version = "=1.0.0" },
+
+    # `sha2`, `blake3` and `curve25519-dalek` need to be updated.
+    { name = "block-buffer", version = "=0.9.0" },
+    { name = "digest", version = "=0.9.0" },
+    { name = "sha2", version = "=0.9.9" },
+
+    # near-vm-runner and wasmer-compiler-near use 0.78.2
+    { name = "wasmparser", version = "=0.78.2" },
+    # Wasmer 2.0 uses both region 2.2.0 and 3.0.0 via dependencies
+    { name = "region", version = "=2.2.0" },
+    # Need this specific version of pwasm-utils for backwards-compatible
+    # stack limiting.
+    { name = "pwasm-utils", version = "=0.12.0" },
+    { name = "parity-wasm", version = "=0.41.0" },
+
+    # param estimator uses newer imports, but it's not part of neard
+    { name = "rand_xorshift", version = "=0.2.0" },
+    { name = "wasmparser", version = "=0.59.0" },
+
+    # wasmer and wasmtime
+    { name = "target-lexicon", version = "=0.10.0" },
+
+    # chain and param estimator
+    { name = "num-rational", version = "=0.3.2" },
+
+    # tracing-subscriber via near-logger-utils and clap via bindgen
+    { name = "ansi_term", version = "=0.12.1" },
+
+    # wasmer 0.17.x
+    { name = "parking_lot", version = "=0.10.2" },
+    { name = "parking_lot_core", version = "=0.7.2" },
+    { name = "lock_api", version = "=0.3.4" },
+    { name = "digest", version = "=0.8.1" },
+
+    # chrono uses old time crate
+    { name = "time", version = "=0.1.44" },
+
+    # ed25519-dalek uses older versions of rand and rand_core
+    { name = "rand", version = "=0.7.3" },
+    { name = "rand_core", version = "=0.5.1" },
+    { name = "rand_chacha", version = "=0.2.2" },
+    { name = "getrandom", version = "=0.1.16" },
+
+    # criterion and criterion-plot use conflicting versions
+    { name = "semver-parser", version = "=0.7.0" },
+    { name = "semver", version = "=0.9.0" },
+
+    # wasmer-runtime-core-near and parity-secp256k1 use an older version
+    { name = "arrayvec", version = "=0.5.2" },
+
+    # borsh uses a very old version of proc-macro-crate
+    { name = "proc-macro-crate", version = "=0.1.5" },
+
+    # criterion and wasmer-runtime-core-near depend on this older
+    # version of the crate.
+    { name = "rustc_version", version = "=0.2.3" },
+
+    # paperclip-macros, strum_macros, walrus-macro depend on this while clap3.1.6 uses heck=0.4.0
+    { name = "heck", version = "=0.3.3" },
+
+    # actix-http depends on an old version
+    { name = "itoa", version = "=0.4.8" },
+
+    # Wasmer requires a newer version and the rest of the ecosystem hasn't caught up yet.
+    { name = "hashbrown", version = "0.11.0" },
+
+    # prometheus depends on an old version of protobuf
+    { name = "protobuf", version = "=2.27.1" },
+]

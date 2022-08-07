@@ -1,0 +1,169 @@
+env:
+  RUST_BACKTRACE: short
+  RUSTFLAGS: -D warnings
+
+steps:
+  - label: "protobuf backward compatibility"
+    command: |
+      buf breaking --against ".git#ref=`git merge-base master HEAD`"
+
+    timeout: 30
+    agents:
+    - "distro=amazonlinux"
+
+  - label: "cargo test integration-tests*"
+    command: |
+      source ~/.cargo/env && set -eux
+      cargo test --locked -p 'integration-tests'
+
+    timeout: 60
+    agents:
+    - "distro=amazonlinux"
+    branches: "!master"
+
+  - label: "cargo test not integration-tests*"
+    command: |
+      docker rm -f $(docker ps --filter "publish=6379" -q) | true
+      docker run -d -p 6379:6379 -d redis
+      source ~/.cargo/env && set -eux
+      cargo test --locked --workspace -p '*' --exclude 'integration-tests*'
+
+    timeout: 60
+    agents:
+    - "distro=amazonlinux"
+    branches: "!master"
+
+  - label: "cargo test nightly integration-tests*"
+    command: |
+      source ~/.cargo/env && set -eux
+      cargo test --features nightly,test_features -p 'integration-tests'
+
+    timeout: 60
+    agents:
+    - "distro=amazonlinux"
+    branches: "!master"
+
+  - label: "cargo test nightly not integration-tests*"
+    command: |
+      docker rm -f $(docker ps --filter "publish=6379" -q) | true
+      docker run -d -p 6379:6379 -d redis
+      source ~/.cargo/env && set -eux
+      cargo test --workspace --features nightly,test_features -p '*' --exclude 'integration-tests*'
+
+    timeout: 60
+    agents:
+    - "distro=amazonlinux"
+    branches: "!master"
+
+  - label: "sanity checks"
+    command: |
+      source ~/.cargo/env && set -eux
+      rustc --version && cargo --version
+      cargo run -p themis --release
+      if [ -e deny.toml ]; then
+        cargo-deny --all-features check bans
+      fi
+      cargo check --workspace --all-targets --all-features
+      cargo check -p neard --features test_features
+      cargo check -p neard --features sandbox
+
+      cargo build -p neard --bin neard --features nightly
+      cd pytest
+      python3 -m pip install --progress-bar off --user -r requirements.txt
+      python3 tests/sanity/spin_up_cluster.py
+      cd ..
+      # Note: We’re not running spin_up_cluster.py for non-nightly
+      # because spinning up non-nightly clusters is already covered
+      # by other steps in the CI, e.g. upgradable.
+
+      cargo build -p neard --bin neard
+      python3 scripts/state/update_res.py check
+
+      python3 scripts/check_nightly.py
+      python3 scripts/check_pytests.py
+      python3 scripts/check_fuzzing.py
+
+      ./scripts/formatting --check
+
+      rm target/rpc_errors_schema.json
+      cargo check -p near-jsonrpc --features dump_errors_schema
+      if ! git --no-pager diff --no-index chain/jsonrpc/res/rpc_errors_schema.json target/rpc_errors_schema.json; then
+          set +x
+          echo 'The RPC errors schema reflects outdated typing structure; please run'
+          echo '    ./chain/jsonrpc/build_errors_schema.sh'
+          exit 1
+      fi >&2
+    timeout: 30
+    agents:
+    - "distro=amazonlinux"
+    branches: "!master"
+
+  - label: "nearlib test"
+    command: |
+      source ~/.cargo/env && set -eux
+      source ~/.nvm/nvm.sh
+      scripts/test_nearlib.sh
+    timeout: 20
+    agents:
+    - "distro=amazonlinux"
+    branches: "!master"
+
+  - label: "backward compatible"
+    command: |
+      source ~/.cargo/env && set -eux
+      cd pytest
+      pip3 install --user -r requirements.txt
+      pwd
+      ls ..
+      python3 tests/sanity/backward_compatible.py
+      ls ../target/debug
+    branches: "!master !beta !stable"
+    timeout: 30
+    agents:
+    - "distro=amazonlinux"
+
+  - label: "upgradable"
+    command: |
+      source ~/.cargo/env && set -eux
+      cd pytest
+      pip3 install --user -r requirements.txt
+      python3 tests/sanity/upgradable.py
+    branches: "!master"
+    timeout: 30
+    agents:
+    - "distro=amazonlinux"
+
+  - label: "db migration"
+    command: |
+      source ~/.cargo/env && set -eux
+      cd pytest
+      pip3 install --user -r requirements.txt
+      python3 tests/sanity/db_migration.py
+    branches: "!master !beta !stable"
+    timeout: 30
+    agents:
+    - "distro=amazonlinux"
+
+  #- label: "near-sdk-rs tests"
+  #  trigger: "near-sdk-rs"
+  #  branches: "!master"
+
+  # Disable rainbow bridge tests as they are temporary broken
+  # - label: "rainbow-bridge test"
+  #   command: |
+  #    source ~/.cargo/env && set -eux
+  #    source ~/.nvm/nvm.sh
+
+  #    git clone https://github.com/near/rainbow-bridge
+  #    cd rainbow-bridge
+  #    source ci/e2e_ci_prepare_env.sh
+  #    source ci/e2e_ci_prepare_log.sh
+
+  #    LOCAL_CORE_SRC=.. ci/e2e.sh
+
+  #  timeout: 60
+  #  agents:
+  #  - "queue=default"
+  #  branches: "!master"
+  #  artifact_paths:
+  #  - "rainbow-bridge/logs/**/*.log"
